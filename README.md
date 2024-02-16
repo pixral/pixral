@@ -1,0 +1,1 @@
+- the bast majority of my Files are made in spanish, unless someone tells me to translate them i might do it instead ( depends on my mood)
