@@ -146,7 +146,7 @@ function aplicarEstilo(doc: DocumentoPdf, estilo: EstiloTrazo): void {
   doc.grosor(e.grosor).gris(e.gris).rayado(e.rayas);
 }
 
-function camino(doc: DocumentoPdf, cmds: Cmd[]): void {
+export function camino(doc: DocumentoPdf, cmds: Cmd[]): void {
   for (const c of cmds) {
     if (c.t === 'M') doc.moverA(c.x, c.y);
     else if (c.t === 'L') doc.lineaA(c.x, c.y);

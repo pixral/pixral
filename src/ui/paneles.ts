@@ -19,6 +19,9 @@ import {
   type OpcionesExport,
 } from '../exportar/exportadores';
 import { HOJAS } from '../exportar/pdf';
+import { resumenPrendas } from '../exportar/tizada';
+import { generarPdfTizada, nombreArchivoTizada } from '../exportar/tizadaPdf';
+import { tizadaActual } from './vistaTizada';
 import { confirmar, pedirTexto } from './dialogos';
 import { ayuda, boton, campo, casilla, h, seccion, seleccion } from './dom';
 import { actualizar, avisarMensaje, editar, estado, piezaActual } from './estado';
@@ -917,6 +920,128 @@ function resumen(pieza: Pieza): HTMLElement {
     ),
     ayuda('Valores en centimetros respecto del talle base.'),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Panel de la tizada
+// ---------------------------------------------------------------------------
+
+export function panelTizada(): HTMLElement {
+  const p = estado.proyecto;
+  const op = estado.opcionesTizada;
+  if (!p || !op) return h('div');
+  const refrescar = () => actualizar({ revisionPanel: estado.revisionPanel + 1 });
+
+  const numero = (etiqueta: string, valorMm: number, alCambiar: (mm: number) => void) =>
+    campo(etiqueta, mmACm(valorMm), (v) => {
+      const mm = leerCmAMm(v);
+      if (mm !== null && mm >= 0) {
+        alCambiar(mm);
+        refrescar();
+      }
+    }, { inputmode: 'decimal' });
+
+  const listas = p.piezas.filter((pz) => pz.incluirEnExport && pz.contorno.nodos.length >= 3);
+  if (listas.length === 0) {
+    return h('div', { clase: 'panel-contenido' }, seccion('Tizada', ayuda('Primero traza alguna pieza.')));
+  }
+
+  const r = tizadaActual();
+
+  const filasTalle = p.talles.map((t) =>
+    h(
+      'label',
+      { clase: 'fila-talle' },
+      h('span', { texto: `Talle ${t.nombre}${t.id === p.talleBaseId ? ' (base)' : ''}` }),
+      h('input', {
+        clase: 'campo-input chico numero',
+        type: 'number',
+        min: '0',
+        step: '1',
+        valor: String(op.prendasPorTalle[t.id] ?? 0),
+        onChange: (e: Event) => {
+          const n = Math.max(0, Math.round(Number((e.target as HTMLInputElement).value) || 0));
+          op.prendasPorTalle = { ...op.prendasPorTalle, [t.id]: n };
+          refrescar();
+        },
+      }),
+    ),
+  );
+
+  const resultado = r
+    ? h(
+        'div',
+        {},
+        h('p', { clase: 'numero-grande', texto: `${(r.largoMm / 1000).toFixed(2).replace('.', ',')} m` }),
+        ayuda(
+          `de tela de ${mmACm(r.anchoTelaMm)} cm ${r.doblada ? 'doblada al medio' : 'abierta'}. ` +
+            `Aprovechamiento ${(r.aprovechamiento * 100).toFixed(0)}%, ${r.piezas.length} piezas a cortar.`,
+        ),
+        r.sinLugar.length > 0
+          ? h('p', {
+              clase: 'aviso',
+              texto: `No entran a lo ancho de la tela: ${r.sinLugar.join(', ')}. Proba con una tela mas ancha o con la tela abierta.`,
+            })
+          : null,
+        boton('Descargar PDF de la tizada', () => descargarTizada(), {
+          clase: 'boton principal ancho',
+          disabled: r.piezas.length === 0,
+        }),
+      )
+    : ayuda('Elegi cuantas prendas vas a cortar.');
+
+  return h(
+    'div',
+    { clase: 'panel-contenido' },
+    seccion(
+      'La tela',
+      numero('Ancho de la tela', op.anchoTelaMm, (mm) => {
+        op.anchoTelaMm = Math.max(100, mm);
+      }),
+      casilla('Doblada al medio', op.doblada, (v) => {
+        op.doblada = v;
+        refrescar();
+      }),
+      ayuda(
+        op.doblada
+          ? 'Como se corta en casa: la tela se dobla y cada pieza sale de a dos. Las que van al lomo se apoyan sobre el doblez.'
+          : 'Tela abierta: cada pieza se corta de a una, y las que van al lomo salen desplegadas enteras.',
+      ),
+    ),
+    seccion('Cuantas prendas', ...filasTalle, ayuda(resumenPrendas(p, op))),
+    seccion(
+      'Detalles',
+      casilla('Cortar con margen de costura', op.incluirCostura, (v) => {
+        op.incluirCostura = v;
+        refrescar();
+      }),
+      casilla('Dejar girar las piezas 180 grados', op.girar180, (v) => {
+        op.girar180 = v;
+        refrescar();
+      }),
+      ayuda('Girar 180 grados no rompe el hilo de la tela y deja encastrar mejor las piezas. Girar 90 no se puede: la prenda quedaria torcida.'),
+      numero('Separacion entre piezas', op.separacionMm, (mm) => {
+        op.separacionMm = Math.min(100, mm);
+      }),
+      numero('Margen a los bordes', op.margenMm, (mm) => {
+        op.margenMm = Math.min(100, mm);
+      }),
+    ),
+    seccion('Tela necesaria', resultado),
+  );
+}
+
+function descargarTizada(): void {
+  const p = estado.proyecto;
+  const op = estado.opcionesTizada;
+  const r = tizadaActual();
+  if (!p || !op || !r) return;
+  try {
+    descargarBlob(generarPdfTizada(p, op, r), nombreArchivoTizada(p));
+    avisarMensaje('Tizada descargada.', 'ok');
+  } catch (e) {
+    avisarMensaje(e instanceof Error ? e.message : 'No se pudo generar la tizada', 'error');
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -23,7 +23,8 @@ import {
 } from './estado';
 import { fecha } from './formato';
 import { ajustarVista, crearLienzo, zoom } from './lienzo';
-import { panelExportar, panelPieza, panelPiezas, panelProgresion, panelTalles } from './paneles';
+import { panelExportar, panelPieza, panelPiezas, panelProgresion, panelTalles, panelTizada } from './paneles';
+import { crearVistaTizada } from './vistaTizada';
 
 interface DefinicionHerramienta {
   id: Herramienta;
@@ -49,12 +50,15 @@ const PESTANAS: Array<{ id: PanelActivo; nombre: string }> = [
   { id: 'pieza', nombre: 'Pieza' },
   { id: 'talles', nombre: 'Talles' },
   { id: 'progresion', nombre: 'Progresion' },
+  { id: 'tizada', nombre: 'Tizada' },
   { id: 'exportar', nombre: 'Exportar' },
 ];
 
 let barraSuperior: HTMLElement;
 let barraHerramientas: HTMLElement;
 let panelLateral: HTMLElement;
+let hostLienzo: HTMLElement;
+let hostTizada: HTMLElement;
 let firmaPanel = '';
 
 function firma(): string {
@@ -199,6 +203,12 @@ function importar(): void {
 
 function renderBarraHerramientas(): void {
   vaciar(barraHerramientas);
+  // En la tizada no hay nada que editar: se esconde la barra de herramientas.
+  const enTizada = estado.panel === 'tizada';
+  barraHerramientas.hidden = enTizada;
+  hostLienzo.hidden = enTizada;
+  hostTizada.hidden = !enTizada;
+  if (enTizada) return;
   const p = estado.proyecto;
   const hayPieza = piezaActual() !== null;
 
@@ -288,16 +298,15 @@ function renderPanel(): void {
       }),
     );
   }
-  const contenido =
-    estado.panel === 'piezas'
-      ? panelPiezas()
-      : estado.panel === 'pieza'
-        ? panelPieza()
-        : estado.panel === 'talles'
-          ? panelTalles()
-          : estado.panel === 'progresion'
-            ? panelProgresion()
-            : panelExportar();
+  const paneles: Record<PanelActivo, () => HTMLElement> = {
+    piezas: panelPiezas,
+    pieza: panelPieza,
+    talles: panelTalles,
+    progresion: panelProgresion,
+    tizada: panelTizada,
+    exportar: panelExportar,
+  };
+  const contenido = paneles[estado.panel]();
 
   panelLateral.append(pestanas, contenido);
 }
@@ -344,18 +353,25 @@ export function iniciarApp(raiz: HTMLElement): void {
   barraSuperior = h('header', { clase: 'barra-superior' });
   barraHerramientas = h('div', { clase: 'barra-herramientas' });
   panelLateral = h('aside', { clase: 'panel-lateral' });
-  const hostLienzo = h('div', { clase: 'host-lienzo' });
+  hostLienzo = h('div', { clase: 'host-lienzo' });
+  hostTizada = h('div', { clase: 'host-lienzo', hidden: true });
 
   raiz.append(
     h(
       'div',
       { clase: 'app' },
       barraSuperior,
-      h('div', { clase: 'cuerpo' }, panelLateral, h('main', { clase: 'area-lienzo' }, barraHerramientas, hostLienzo)),
+      h(
+        'div',
+        { clase: 'cuerpo' },
+        panelLateral,
+        h('main', { clase: 'area-lienzo' }, barraHerramientas, hostLienzo, hostTizada),
+      ),
     ),
   );
 
   crearLienzo(hostLienzo);
+  crearVistaTizada(hostTizada);
   window.addEventListener('keydown', atajos);
 
   suscribir(() => {

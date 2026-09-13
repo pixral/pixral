@@ -1303,7 +1303,7 @@ export function suavizarPieza(): void {
 export function crearLienzo(host: HTMLElement): () => void {
   contenedor = host;
   lienzo = document.createElement('canvas');
-  lienzo.className = 'lienzo';
+  lienzo.className = 'lienzo lienzo-editor';
   host.append(lienzo);
   ctx = lienzo.getContext('2d')!;
 

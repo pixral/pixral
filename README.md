@@ -93,6 +93,29 @@ En **Exportar** se elige qué talles, si va con costura, y el tamaño de hoja:
 > Al imprimir hay que elegir **escala 100%** o **"tamaño real"**. Nunca
 > "ajustar a la página": eso achica el molde y arruina todo.
 
+### 7. La tizada: cuánta tela comprar
+
+En la solapa **Tizada** se acomodan las piezas sobre la tela y sale el número
+que importa: **cuántos metros hay que comprar**.
+
+Se carga el ancho de la tela (1,40 m por defecto), si va doblada al medio o
+abierta, y cuántas prendas de cada talle se van a cortar. La app acomoda las
+piezas respetando las reglas del oficio:
+
+- Las piezas solo se giran **180°**, nunca 90°: la línea de hilo tiene que
+  quedar paralela al orillo o la prenda sale torcida.
+- Con la tela **doblada**, las piezas que van al lomo se apoyan sobre el
+  doblez, y las demás salen de a dos porque se corta sobre las dos capas.
+- Con la tela **abierta**, las piezas que van al lomo se despliegan enteras y
+  las que van de a pares se cortan una y su espejo.
+
+El PDF de la tizada sale en una hoja A4 con el plano a escala, la regla en
+centímetros y los metros necesarios bien grandes arriba. **Este PDF no va a
+tamaño real**: es para mirarlo mientras se acomoda la tela sobre la mesa.
+
+Si alguna pieza es más ancha que la tela, la app lo avisa en vez de hacer de
+cuenta que entra.
+
 ---
 
 ## Cómo funciona la progresión
@@ -110,6 +133,29 @@ un campo de deformación a partir de la tabla de medidas:
 
 Un nodo se puede marcar como **fijo** para que no se mueva nunca, y una regla se
 puede cargar a mano en milímetros por talle en vez de sacarla de la tabla.
+
+## Cómo funciona la tizada
+
+Acomodar formas irregulares de la mejor manera posible es un problema carísimo
+de resolver exacto, así que se usa una heurística que da buenos resultados y es
+instantánea:
+
+- Cada pieza se pasa a una grilla de 4 mm, ya engordada la mitad de la
+  separación que se quiere entre piezas.
+- De cada columna de esa grilla se guarda dónde empieza y dónde termina la
+  pieza. **Ese perfil es lo que permite que las piezas se encastren**: la curva
+  de una sisa entra en el hueco que deja la de al lado.
+- Se lleva un "horizonte" con la altura ocupada en cada columna de la tela.
+  Para cada posición horizontal se calcula cuánto hay que bajar la pieza para
+  que apoye, y se elige la que deja la tela más corta.
+
+Las piezas se acomodan de la más grande a la más chica, y las que van al lomo
+primero porque tienen la posición forzada contra el doblez.
+
+No es un encimado óptimo (no va a tucar una pieza dentro del hueco cerrado de
+otra), pero es determinista, rápido, y bastante mejor que acomodar por
+rectángulos: dos mangas trapezoidales, por ejemplo, se dan vuelta una respecto
+de la otra y entran en la mitad del largo.
 
 ---
 
@@ -136,13 +182,16 @@ src/
     progresion.ts   motor de talles a partir de la tabla de medidas
     homografia.ts   corrección de perspectiva
     imagen.ts       detección automática del contorno en la foto
+    encimado.ts     acomodado de formas irregulares sobre una tira de ancho fijo
     proyecto.ts     fábricas, valores por defecto y migraciones
     almacen.ts      guardado local (IndexedDB) e importar/exportar respaldo
   exportar/
     dibujo.ts       representación intermedia que comparten los tres formatos
     pdf.ts          generador de PDF propio, para controlar la escala al milímetro
     exportadores.ts PDF (mosaico y hoja única), SVG y DXF
-  ui/             lienzo, paneles, estado y diálogos
+    tizada.ts       armado de la tizada a partir del proyecto
+    tizadaPdf.ts    el plano de la tizada en una hoja A4
+  ui/             lienzo, vista de tizada, paneles, estado y diálogos
 ```
 
 La regla de oro del proyecto: **todo se guarda en milímetros y se muestra en
@@ -151,10 +200,11 @@ centímetros**. La única conversión vive en `ui/formato.ts`.
 ### Tests
 
 `npm test` corre los tests de la lógica: geometría, margen de costura,
-progresión, homografía, detección de contorno y exportación. Entre otras cosas
-se verifica que el PDF salga con la hoja A4 exacta en puntos PostScript y que
-un cuadrado de 10 cm quede dibujado con esas coordenadas, que es lo que
-garantiza que imprima a tamaño real.
+progresión, homografía, detección de contorno, encimado, tizada y exportación.
+Entre otras cosas se verifica que el PDF salga con la hoja A4 exacta en puntos
+PostScript y que un cuadrado de 10 cm quede dibujado con esas coordenadas, que
+es lo que garantiza que imprima a tamaño real; y que dos piezas trapezoidales
+se encastren girando una, en vez de apilarse.
 
 ---
 

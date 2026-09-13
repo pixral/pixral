@@ -103,7 +103,7 @@ export function aplanar(cmds: Cmd[], pasos = 16): Punto[] {
   return pts;
 }
 
-function cajaDeTrazos(trazos: Trazo[]): Caja {
+export function cajaDeTrazos(trazos: Trazo[]): Caja {
   let caja: Caja | null = null;
   for (const t of trazos) {
     const pts = aplanar(t.cmds, 8);
@@ -126,7 +126,7 @@ const ESTILO_INTERNA: Record<string, EstiloTrazo> = {
   interna: 'interna',
 };
 
-function trazosDePieza(pieza: Pieza, op: OpcionesDibujo, talle?: string): Trazo[] {
+export function trazosDePieza(pieza: Pieza, op: OpcionesDibujo, talle?: string): Trazo[] {
   const trazos: Trazo[] = [];
   if (op.incluirCostura && pieza.costuraMm !== 0) {
     const corte = lineaDeCorte(pieza);
@@ -292,6 +292,25 @@ export function distribuir(dibujos: Dibujo[], anchoMaximoMm: number, separacionM
   }
 
   return { colocados, ancho: Math.max(anchoUsado, 1), alto: Math.max(y + altoFila, 1) };
+}
+
+/** Aplica una transformacion punto por punto. Sirve para girar y espejar. */
+export function mapearCmds(cmds: Cmd[], fn: (p: Punto) => Punto): Cmd[] {
+  return cmds.map((c) => {
+    if (c.t === 'Z') return c;
+    if (c.t === 'C') {
+      const p1 = fn({ x: c.x1, y: c.y1 });
+      const p2 = fn({ x: c.x2, y: c.y2 });
+      const p3 = fn({ x: c.x, y: c.y });
+      return { t: 'C', x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, x: p3.x, y: p3.y };
+    }
+    const p = fn({ x: c.x, y: c.y });
+    return { t: c.t, x: p.x, y: p.y };
+  });
+}
+
+export function mapearTrazos(trazos: Trazo[], fn: (p: Punto) => Punto): Trazo[] {
+  return trazos.map((t) => ({ ...t, cmds: mapearCmds(t.cmds, fn) }));
 }
 
 export function desplazarCmds(cmds: Cmd[], dx: number, dy: number): Cmd[] {

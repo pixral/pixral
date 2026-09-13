@@ -6,6 +6,7 @@
  */
 
 import * as almacen from '../nucleo/almacen';
+import { opcionesTizadaPorDefecto, type OpcionesTizada } from '../exportar/tizada';
 import type { Pieza, Proyecto } from '../nucleo/tipos';
 
 export type Herramienta =
@@ -18,7 +19,7 @@ export type Herramienta =
   | 'perspectiva'
   | 'medir';
 
-export type PanelActivo = 'piezas' | 'pieza' | 'talles' | 'progresion' | 'exportar';
+export type PanelActivo = 'piezas' | 'pieza' | 'talles' | 'progresion' | 'tizada' | 'exportar';
 
 export interface Vista {
   /** Pixeles de pantalla por milimetro. */
@@ -43,6 +44,8 @@ export interface Estado {
   mostrarGrilla: boolean;
   mostrarEjes: boolean;
   panel: PanelActivo;
+  /** Opciones de la tizada; se arman al abrir el proyecto. */
+  opcionesTizada: OpcionesTizada | null;
   mensaje: { texto: string; tipo: 'info' | 'error' | 'ok' } | null;
   cargando: boolean;
   /** Se incrementa para forzar el redibujo de los paneles. */
@@ -63,6 +66,7 @@ const inicial: Estado = {
   mostrarGrilla: true,
   mostrarEjes: true,
   panel: 'piezas',
+  opcionesTizada: null,
   mensaje: null,
   cargando: false,
   revisionPanel: 0,
@@ -204,6 +208,7 @@ export function abrirProyecto(p: Proyecto): void {
   adelante = [];
   ultimaFusion = null;
   estado.proyecto = p;
+  estado.opcionesTizada = opcionesTizadaPorDefecto(p);
   estado.piezaId = p.piezas[0]?.id ?? null;
   estado.seleccion = [];
   estado.talleVista = null;
